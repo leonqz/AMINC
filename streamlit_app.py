@@ -85,6 +85,7 @@ def main():
             with tab1:
                 st.subheader(f"Rolling 7-Day Average Sales and Price Change for {selected_item}")
                 fig = plot_dual_axis_chart(filtered_data, selected_item)
+                st.pyplot(fig)
 
             with tab2:
                 st.subheader(f"Units Sold Over Time for {selected_item}")
@@ -128,8 +129,9 @@ def read_and_combine_files(file_names):
             if 'Date' in data.columns:
                 data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
             data['Units Sold'] = pd.to_numeric(data['Units Sold'], errors='coerce').fillna(0)
-            data['Unit Price'] = pd.to_numeric(data['Unit Price'], errors='coerce').fillna(0)
-            combined_data.append(data)
+            if 'Unit Price' in data.columns:
+                data = clean_unit_price_column(data)            
+                combined_data.append(data)
         except Exception as e:
             st.error(f"Error reading file {file_name}: {e}")
     
@@ -150,6 +152,15 @@ def calculate_rolling_metrics(data):
 
     return data
 
+def clean_unit_price_column(data):
+    """Clean and convert 'Unit Price' to numeric."""
+    # Remove the dollar sign and convert to numeric
+    data['Unit Price'] = data['Unit Price'].str.replace(r'[^0-9.]', '', regex=True)
+    data['Unit Price'] = pd.to_numeric(data['Unit Price'], errors='coerce')
+
+    # Fill missing values with 0 (optional) or handle otherwise
+    data['Unit Price'] = data['Unit Price'].fillna(0)
+    return data
 
 def process_uploaded_files(uploaded_files):
     """Read and combine multiple uploaded files."""
