@@ -6,8 +6,8 @@ from datetime import datetime
 
 # Example credentials
 USERS = {
-    "user1": bcrypt.hashpw("password1".encode(), bcrypt.gensalt()).decode(),
-    "user2": bcrypt.hashpw("password2".encode(), bcrypt.gensalt()).decode(),
+    "aforestier@amincpr.com": bcrypt.hashpw("aaf123@!".encode(), bcrypt.gensalt()).decode(),
+    "epabon@amincpr.com": bcrypt.hashpw("ebb124@".encode(), bcrypt.gensalt()).decode(),
 }
 
 def authenticate(username, password):
