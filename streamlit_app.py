@@ -80,7 +80,7 @@ def main():
             filtered_data = calculate_rolling_metrics(filtered_data)
 
             # Tabs for different views
-            tab1, tab2 = st.tabs(["Sales Trends", "Summary"])
+            tab1, tab2, tab3 = st.tabs(["Sales Trends", "Rolling 7 Day", "Elasticity"])
 
             with tab1:
                 st.subheader(f"Rolling 7-Day Average Sales and Price Change for {selected_item}")
@@ -93,8 +93,88 @@ def main():
 
                 st.subheader(f"Unit Price Over Time for {selected_item}")
                 st.line_chart(filtered_data.set_index('Date')['Unit Price'])
+
+            with tab3: 
+                st.subheader(f"Price Elasticity for {selected_item}")
+                elasticity_results = calculate_elasticity(filtered_data)
+
+                if not elasticity_results.empty:
+                    # Filter by date of price change
+                    change_dates = elasticity_results['Change Date'].dt.date.unique()
+                    selected_dates = st.multiselect("Select price change dates to filter:", change_dates, default=change_dates)
+
+                    # Apply date filter
+                    filtered_results = elasticity_results[elasticity_results['Change Date'].dt.date.isin(selected_dates)]
+
+                    st.write(filtered_results)
+                    plot_elasticity_chart(filtered_results)
+
         else:
             st.warning("No valid data to display. Ensure files are correctly formatted.")
+
+def calculate_elasticity(data):
+    """Calculate elasticity for items with price changes."""
+    # Ensure indices are sequential
+    data = data.sort_values('Date').reset_index(drop=True)
+    price_changes = data[data['Unit Price'].diff() != 0]
+
+    results = []
+    for row_index, row in price_changes.iterrows():
+        change_date = row['Date']
+        new_price = row['Unit Price']
+
+        # Get the previous price using iloc for positional indexing
+        if row_index > 0:
+            old_price = data.iloc[row_index - 1]['Unit Price']
+        else:
+            old_price = None
+
+        if old_price is None or old_price == new_price:
+            continue
+
+        # Filter data one month before and after the price change
+        before = data[(data['Date'] < change_date) & (data['Date'] >= change_date - pd.Timedelta(days=30))]
+        after = data[(data['Date'] > change_date) & (data['Date'] <= change_date + pd.Timedelta(days=30))]
+
+        if before.empty or after.empty:
+            continue
+
+        before_sales = before['Units Sold'].sum()
+        after_sales = after['Units Sold'].sum()
+
+        quantity_change = (after_sales - before_sales) / before_sales
+        price_change = (new_price - old_price) / old_price
+        elasticity = quantity_change / price_change if price_change != 0 else None
+
+        results.append({
+            'Change Date': change_date,
+            'Old Price': old_price,
+            'New Price': new_price,
+            'Before Sales': before_sales,
+            'After Sales': after_sales,
+            'Price Change (%)': price_change * 100,
+            'Quantity Change (%)': quantity_change * 100,
+            'Elasticity': elasticity
+        })
+    return pd.DataFrame(results)
+
+# Plot elasticity results
+def plot_elasticity_chart(results):
+    """Visualize sales before and after price changes."""
+    for _, row in results.iterrows():
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        ax.bar(['Before', 'After'], [row['Before Sales'], row['After Sales']], color=['blue', 'orange'])
+        ax.set_title(f"Price Change on {row['Change Date'].date()}")
+        ax.set_xlabel("Period")
+        ax.set_ylabel("Units Sold")
+        st.pyplot(fig)
+
+        st.write(f"**Elasticity**: {row['Elasticity']:.2f}")
+        st.write(f"**Price Change**: {row['Price Change (%)']:.2f}%")
+        st.write(f"**Quantity Change**: {row['Quantity Change (%)']:.2f}%")
+        st.markdown("---")
+
 
 def plot_dual_axis_chart(data, item):
     """Plot a dual-axis chart for rolling sales average and unit price."""
