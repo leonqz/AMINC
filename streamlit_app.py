@@ -49,19 +49,62 @@ def main():
     st.write("Upload your sales data files containing 'Date', 'Description', 'Unit Price', and 'Units Sold' columns.")
 
     # File uploader
-    uploaded_files = st.file_uploader("Upload files", type=["csv"], accept_multiple_files=True)
+    FILE_NAMES = [
+    "Items BetterBasket 9.18.2024.csv",
+    "Items BetterBasket 9.25.2024.csv",
+    "Items BetterBasket 10.2.2024.csv",
+    "Items BetterBasket 10.9.2024.csv",
+    "Items BetterBasket 10.16.2024.csv",
+    "Items BetterBasket 10.23.2024.csv",
+    "Items BetterBasket 10.30.2024.csv",
+    "Items BetterBasket 11.6.2024.csv",
+    "Items BetterBasket 11.13.2024.csv",
 
-    if uploaded_files:
-        # Process uploaded files
-        combined_data = process_uploaded_files(uploaded_files)
+    ]
 
-        if not combined_data.empty:
-            st.success("Data successfully combined!")
-            st.write("Combined Data Preview:")
-            st.write(combined_data.head())
 
-            # Visualize the data
-            visualize_sales_data(combined_data)
+    data = read_and_combine_files(FILE_NAMES)
+
+    if not data.empty:
+        st.success("Data successfully loaded!")
+        st.write("Data Preview:")
+        st.write(data.head())
+
+        # Dropdown for selecting an item
+        unique_items = data['Description'].unique()
+        selected_item = st.selectbox("Select an item to visualize:", unique_items)
+
+        # Filter data for the selected item
+        filtered_data = data[data['Description'] == selected_item]
+
+        st.subheader(f"Units Sold Over Time for {selected_item}")
+        st.line_chart(filtered_data.set_index('Date')['Units Sold'])
+
+        st.subheader(f"Unit Price Over Time for {selected_item}")
+        st.line_chart(filtered_data.set_index('Date')['Unit Price'])
+    else:
+        st.warning("No valid data to display. Ensure files are correctly formatted.")
+
+
+def read_and_combine_files(file_names):
+    """Read multiple CSV files and combine them into a single DataFrame."""
+    combined_data = []
+    for file_name in file_names:
+        try:
+            data = pd.read_csv(file_name)
+
+            # Ensure the 'Date' column is in datetime format
+            if 'Date' in data.columns:
+                data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
+
+            combined_data.append(data)
+        except Exception as e:
+            st.error(f"Error reading file {file_name}: {e}")
+    
+    if combined_data:
+        return pd.concat(combined_data, ignore_index=True)
+    return pd.DataFrame()
+
 
 def process_uploaded_files(uploaded_files):
     """Read and combine multiple uploaded files."""
