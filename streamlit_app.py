@@ -3,6 +3,7 @@ import bcrypt
 import pandas as pd
 import re
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 # Example credentials
 USERS = {
@@ -18,7 +19,7 @@ def authenticate(username, password):
     return False
 
 def main():
-    st.title("Streamlit Login Demo")
+    st.title("Welcome to BetterBasket, AM Inc")
 
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
@@ -46,45 +47,75 @@ def main():
             st.session_state.authenticated = False
 
         st.title("Sales Data Dashboard")
-    st.write("Upload your sales data files containing 'Date', 'Description', 'Unit Price', and 'Units Sold' columns.")
+        st.write("Upload your sales data files containing 'Date', 'Description', 'Unit Price', and 'Units Sold' columns.")
 
-    # File uploader
-    FILE_NAMES = [
-    "Items BetterBasket 9.18.2024.csv",
-    "Items BetterBasket 9.25.2024.csv",
-    "Items BetterBasket 10.2.2024.csv",
-    "Items BetterBasket 10.9.2024.csv",
-    "Items BetterBasket 10.16.2024.csv",
-    "Items BetterBasket 10.23.2024.csv",
-    "Items BetterBasket 10.30.2024.csv",
-    "Items BetterBasket 11.6.2024.csv",
-    "Items BetterBasket 11.13.2024.csv",
+        # File uploader
+        FILE_NAMES = [
+        "Items BetterBasket 9.18.2024.csv",
+        "Items BetterBasket 9.25.2024.csv",
+        "Items BetterBasket 10.2.2024.csv",
+        "Items BetterBasket 10.9.2024.csv",
+        "Items BetterBasket 10.16.2024.csv",
+        "Items BetterBasket 10.23.2024.csv",
+        "Items BetterBasket 10.30.2024.csv",
+        "Items BetterBasket 11.6.2024.csv",
+        "Items BetterBasket 11.13.2024.csv",
 
-    ]
+        ]
 
 
-    data = read_and_combine_files(FILE_NAMES)
+        data = read_and_combine_files(FILE_NAMES)
 
-    if not data.empty:
-        st.success("Data successfully loaded!")
-        st.write("Data Preview:")
-        st.write(data.head())
+        if not data.empty:
+            st.success("Data successfully loaded!")
+            st.write("Data Preview:")
+            st.write(data.head())
 
-        # Dropdown for selecting an item
-        unique_items = data['Description'].unique()
-        selected_item = st.selectbox("Select an item to visualize:", unique_items)
+            # Dropdown for selecting an item
+            unique_items = data['Description'].unique()
+            selected_item = st.selectbox("Select an item to visualize:", unique_items)
 
-        # Filter data for the selected item
-        filtered_data = data[data['Description'] == selected_item]
+            # Filter data for the selected item
+            filtered_data = data[data['Description'] == selected_item]
+            filtered_data = calculate_rolling_metrics(filtered_data)
 
-        st.subheader(f"Units Sold Over Time for {selected_item}")
-        st.line_chart(filtered_data.set_index('Date')['Units Sold'])
+            # Tabs for different views
+            tab1, tab2 = st.tabs(["Sales Trends", "Summary"])
 
-        st.subheader(f"Unit Price Over Time for {selected_item}")
-        st.line_chart(filtered_data.set_index('Date')['Unit Price'])
-    else:
-        st.warning("No valid data to display. Ensure files are correctly formatted.")
+            with tab1:
+                st.subheader(f"Rolling 7-Day Average Sales and Price Change for {selected_item}")
+                fig = plot_dual_axis_chart(filtered_data, selected_item)
 
+            with tab2:
+                st.subheader(f"Units Sold Over Time for {selected_item}")
+                st.line_chart(filtered_data.set_index('Date')['Units Sold'])
+
+                st.subheader(f"Unit Price Over Time for {selected_item}")
+                st.line_chart(filtered_data.set_index('Date')['Unit Price'])
+        else:
+            st.warning("No valid data to display. Ensure files are correctly formatted.")
+
+def plot_dual_axis_chart(data, item):
+    """Plot a dual-axis chart for rolling sales average and unit price."""
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    # Plot rolling sales average on the primary y-axis
+    ax1.set_xlabel("Date")
+    ax1.set_ylabel("Rolling Sales Average", color="blue")
+    ax1.plot(data['Date'], data['Rolling_Sales_Avg'], color="blue", label="Rolling Sales Avg")
+    ax1.tick_params(axis='y', labelcolor="blue")
+    ax1.legend(loc="upper left")
+
+    # Plot unit price on the secondary y-axis
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Unit Price", color="red")
+    ax2.plot(data['Date'], data['Unit Price'], color="red", linestyle="--", label="Unit Price")
+    ax2.tick_params(axis='y', labelcolor="red")
+    ax2.legend(loc="upper right")
+
+    plt.title(f"Rolling Sales Avg and Unit Price for {item}")
+    plt.tight_layout()
+    return fig
 
 def read_and_combine_files(file_names):
     """Read multiple CSV files and combine them into a single DataFrame."""
@@ -96,7 +127,8 @@ def read_and_combine_files(file_names):
             # Ensure the 'Date' column is in datetime format
             if 'Date' in data.columns:
                 data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
-
+            data['Units Sold'] = pd.to_numeric(data['Units Sold'], errors='coerce').fillna(0)
+            data['Unit Price'] = pd.to_numeric(data['Unit Price'], errors='coerce').fillna(0)
             combined_data.append(data)
         except Exception as e:
             st.error(f"Error reading file {file_name}: {e}")
@@ -104,6 +136,19 @@ def read_and_combine_files(file_names):
     if combined_data:
         return pd.concat(combined_data, ignore_index=True)
     return pd.DataFrame()
+
+def calculate_rolling_metrics(data):
+    """Calculate rolling 7-day averages and price changes."""
+    # Sort data by Date
+    data = data.sort_values(by='Date')
+
+    # Calculate rolling 7-day average of Units Sold
+    data['Rolling_Sales_Avg'] = data['Units Sold'].rolling(window=7).mean()
+
+    # Calculate daily price change
+    data['Price_Change'] = data['Unit Price'].diff()
+
+    return data
 
 
 def process_uploaded_files(uploaded_files):
