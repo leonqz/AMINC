@@ -119,7 +119,7 @@ def main():
                                     unsafe_allow_html=True,
                             )
  
-                        st.write("Elasticity results for price changes on 2024-10-16:")
+                        st.write("Elasticity results for price changes on 2024-10-16. Sales measured one month before and after price change")
                         st.write(filtered_results)
 
 
