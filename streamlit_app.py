@@ -38,8 +38,9 @@ def main():
 
             if submit:
                 if authenticate(username, password):
-                    st.success("Login successful!")
                     st.session_state.authenticated = True
+                    st.success("Login successful!")
+                    st.stop()  # Stops execution and triggers a rerun of the script
                 else:
                     st.error("Invalid username or password.")
 
@@ -71,7 +72,13 @@ def main():
         if not data.empty:
             # Dropdown for selecting an item
             unique_items = data['Description'].unique()
-            selected_item = st.selectbox("Select an item to visualize:", unique_items)
+
+            if 'CHINA NEBO lb' in unique_items:
+                default_index = list(unique_items).index('CHINA NEBO lb')  # Get the index of 'China Nebo'
+            else:
+                default_index = 0  # Fallback to the first item if 'China Nebo' is not found
+
+            selected_item = st.selectbox("Select an item to visualize:", unique_items, index=default_index)
 
             # Filter data for the selected item
             filtered_data = data[data['Description'] == selected_item]
@@ -104,8 +111,19 @@ def main():
                     ]
 
                     if not filtered_results.empty:
+                        for _, row in filtered_results.iterrows():
+                            if row['Elasticity'] < -1:
+                                st.markdown(
+                                    "<h1 style='color:green;'>Elastic Item</h1>",
+                                    unsafe_allow_html=True,
+                            )
+ 
                         st.write("Elasticity results for price changes on 2024-10-16:")
                         st.write(filtered_results)
+
+
+                                    # Check elasticity values and add large text if criteria are met
+
 
                     # Visualize results
                         plot_elasticity_chart(filtered_results)
