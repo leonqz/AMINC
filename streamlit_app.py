@@ -30,6 +30,7 @@ def main():
 
     if not st.session_state.authenticated:
         # Login form
+        st.subheader("Login")
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
@@ -42,16 +43,13 @@ def main():
                 else:
                     st.error("Invalid username or password.")
 
-    if st.session_state.authenticated:
-        st.success("You are logged in!")
+    else:
         # Protected content here
-        st.write("Welcome to the protected page!")
+        st.success("You are logged in!")
 
         if st.button("Logout"):
             st.session_state.authenticated = False
-
-        st.title("Sales Data Dashboard")
-        st.write("Upload your sales data files containing 'Date', 'Description', 'Unit Price', and 'Units Sold' columns.")
+            st.experimental_rerun()  # Refresh the page to show login form
 
         # File uploader
         FILE_NAMES = [
@@ -71,10 +69,6 @@ def main():
         data = read_and_combine_files(FILE_NAMES)
 
         if not data.empty:
-            st.success("Data successfully loaded!")
-            st.write("Data Preview:")
-            st.write(data.head())
-
             # Dropdown for selecting an item
             unique_items = data['Description'].unique()
             selected_item = st.selectbox("Select an item to visualize:", unique_items)
@@ -87,32 +81,38 @@ def main():
             tab1, tab2, tab3 = st.tabs(["Sales Trends", "Rolling 7 Day", "Elasticity"])
 
             with tab1:
-                st.subheader(f"Rolling 7-Day Average Sales and Price Change for {selected_item}")
-                fig = plot_dual_axis_chart(filtered_data, selected_item)
-                st.pyplot(fig)
-
-            with tab2:
                 st.subheader(f"Units Sold Over Time for {selected_item}")
                 st.line_chart(filtered_data.set_index('Date')['Units Sold'])
 
                 st.subheader(f"Unit Price Over Time for {selected_item}")
                 st.line_chart(filtered_data.set_index('Date')['Unit Price'])
 
+            with tab2:
+                st.subheader(f"Rolling 7-Day Average Sales and Price Change for {selected_item}")
+                fig = plot_dual_axis_chart(filtered_data, selected_item)
+                st.pyplot(fig)
+                
             with tab3: 
                 st.subheader(f"Price Elasticity for {selected_item}")
                 elasticity_results = calculate_elasticity(filtered_data)
 
                 if not elasticity_results.empty:
-                    # Filter by date of price change
-                    change_dates = elasticity_results['Change Date'].dt.date.unique()
-                    selected_dates = st.multiselect("Select price change dates to filter:", change_dates, default=change_dates)
+                # Filter results for date `2024-10-16`
+                    target_date = pd.Timestamp("2024-10-16")
+                    filtered_results = elasticity_results[
+                        elasticity_results['Change Date'] == target_date
+                    ]
 
-                    # Apply date filter
-                    filtered_results = elasticity_results[elasticity_results['Change Date'].dt.date.isin(selected_dates)]
+                    if not filtered_results.empty:
+                        st.write("Elasticity results for price changes on 2024-10-16:")
+                        st.write(filtered_results)
 
-                    st.write(filtered_results)
-                    plot_elasticity_chart(filtered_results)
-
+                    # Visualize results
+                        plot_elasticity_chart(filtered_results)
+                    else:
+                        st.warning("No price changes detected for 2024-10-16.")
+                else:
+                    st.warning("No price changes detected for the selected item.")
         else:
             st.warning("No valid data to display. Ensure files are correctly formatted.")
 
