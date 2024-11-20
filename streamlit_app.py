@@ -40,6 +40,7 @@ def main():
                 if authenticate(username, password):
                     st.session_state.authenticated = True
                     st.success("Login successful!")
+    
                     st.stop()  # Stops execution and triggers a rerun of the script
                 else:
                     st.error("Invalid username or password.")
@@ -85,7 +86,7 @@ def main():
             filtered_data = calculate_rolling_metrics(filtered_data)
 
             # Tabs for different views
-            tab1, tab2, tab3 = st.tabs(["Sales Trends", "Rolling 7 Day", "Elasticity"])
+            tab1, tab2, tab3 = st.tabs(["Sales Trends", "Sales and Price Combined", "Elasticity"])
 
             with tab1:
                 st.subheader(f"Units Sold Over Time for {selected_item}")
@@ -170,13 +171,15 @@ def calculate_elasticity(data):
 
         results.append({
             'Change Date': change_date,
+            'Elasticity': elasticity,
+
             'Old Price': old_price,
             'New Price': new_price,
             'Before Sales': before_sales,
             'After Sales': after_sales,
             'Price Change (%)': price_change * 100,
-            'Quantity Change (%)': quantity_change * 100,
-            'Elasticity': elasticity
+            'Quantity Change (%)': quantity_change * 100
+
         })
     return pd.DataFrame(results)
 
