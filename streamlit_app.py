@@ -8,7 +8,11 @@ import matplotlib.pyplot as plt
 # Example credentials
 USERS = {
     "aforestier@amincpr.com": bcrypt.hashpw("aaf123@!".encode(), bcrypt.gensalt()).decode(),
+    "ebarillas@amincpr.com": bcrypt.hashpw("ebar123@!".encode(), bcrypt.gensalt()).decode(),
+    "ririzarry@amincpr.com": bcrypt.hashpw("riri123@A!".encode(), bcrypt.gensalt()).decode(),
     "epabon@amincpr.com": bcrypt.hashpw("ebb124@".encode(), bcrypt.gensalt()).decode(),
+    "mhernandez@amincpr.com": bcrypt.hashpw("mhern123@".encode(), bcrypt.gensalt()).decode(),
+    "demo@amincpr.com": bcrypt.hashpw("demo123@".encode(), bcrypt.gensalt()).decode(),
 }
 
 def authenticate(username, password):
